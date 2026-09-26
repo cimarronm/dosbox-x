@@ -45,12 +45,6 @@ uint16_t SaturateDwordSToWordU(int32_t value);
 
 void   setFPUTagEmpty();
 
-// Replace with std::numbers when c++20 is available
-#define PI		3.141592653589793238462L
-#define L2E		1.4426950408889634073605L
-#define L2T		3.3219280948873623478693L
-#define LN2		0.69314718055994530941683L
-#define LG2		0.30102999566398119521379L
 constexpr double X87_TRIG_ARG_LIMIT = 0x1p63; // 2^63
 
 // TOP = macro for use in C/C++ for top of FPU stack
@@ -81,6 +75,11 @@ void FPU_FLD_F80(PhysPt addr);
 void FPU_FLD1();
 void FPU_FLDCW(PhysPt addr);
 void FPU_FLDENV(PhysPt addr, bool op16);
+void FPU_FLDL2T();
+void FPU_FLDL2E();
+void FPU_FLDLG2();
+void FPU_FLDLN2();
+void FPU_FLDPI();
 void FPU_FLDZ();
 void FPU_FPOP();
 void FPU_FRSTOR(PhysPt addr, bool op16);

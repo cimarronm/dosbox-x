@@ -559,61 +559,6 @@ static void FPU_FXTRACT(void) {
 	FPU_PUSH(mant);
 }
 
-static inline void FPU_FLD_CONSTANT_ADJUST_DOWN()
-{
-	if (FPU_ArchitectureType >= FPU_ARCHTYPE_387)
-	{
-		if (fpu.cw.RC==FPUControlWord::RoundMode::Down ||
-		    fpu.cw.RC==FPUControlWord::RoundMode::Chop)
-		{
-			// On 32-bit x87 and later rounding mode affects the value
-			fpu.regs_80[TOP].f.mantissa--;
-		}
-	}
-}
-
-static inline void FPU_FLD_CONSTANT_ADJUST_UP()
-{
-	if (FPU_ArchitectureType >= FPU_ARCHTYPE_387)
-	{
-		if (fpu.cw.RC==FPUControlWord::RoundMode::Up)
-		{
-			// On 32-bit x87 and later rounding mode affects the value
-			fpu.regs_80[TOP].f.mantissa++;
-		}
-	}
-}
-
-static void FPU_FLDL2T(void){
-	FPU_PREP_PUSH();
-	fpu.regs_80[TOP].v = L2T;
-	FPU_FLD_CONSTANT_ADJUST_UP();
-}
-
-static void FPU_FLDL2E(void){
-	FPU_PREP_PUSH();
-	fpu.regs_80[TOP].v = L2E;
-	FPU_FLD_CONSTANT_ADJUST_DOWN();
-}
-
-static void FPU_FLDPI(void){
-	FPU_PREP_PUSH();
-	fpu.regs_80[TOP].v = PI;
-	FPU_FLD_CONSTANT_ADJUST_DOWN();
-}
-
-static void FPU_FLDLG2(void){
-	FPU_PREP_PUSH();
-	fpu.regs_80[TOP].v = LG2;
-	FPU_FLD_CONSTANT_ADJUST_DOWN();
-}
-
-static void FPU_FLDLN2(void){
-	FPU_PREP_PUSH();
-	fpu.regs_80[TOP].v = LN2;
-	FPU_FLD_CONSTANT_ADJUST_DOWN();
-}
-
 
 static INLINE void FPU_FADD_EA(Bitu op1){
 	FPU_FADD(op1,8);

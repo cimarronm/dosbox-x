@@ -386,36 +386,6 @@ static void FPU_FLD_I64(PhysPt addr,Bitu store_to) {
 	fpu.use80[store_to] = false;
 }
 
-static void FPU_FLDL2E(void){
-	FPU_PREP_PUSH();
-	fpu.use80[TOP] = false; // we used the less precise version, drop the 80-bit precision
-	fpu.regs[TOP].d = L2E;
-}
-
-static void FPU_FLDL2T(void){
-	FPU_PREP_PUSH();
-	fpu.use80[TOP] = false; // we used the less precise version, drop the 80-bit precision
-	fpu.regs[TOP].d = L2T;
-}
-
-static void FPU_FLDLG2(void){
-	FPU_PREP_PUSH();
-	fpu.use80[TOP] = false; // we used the less precise version, drop the 80-bit precision
-	fpu.regs[TOP].d = LG2;
-}
-
-static void FPU_FLDLN2(void){
-	FPU_PREP_PUSH();
-	fpu.use80[TOP] = false; // we used the less precise version, drop the 80-bit precision
-	fpu.regs[TOP].d = LN2;
-}
-
-static void FPU_FLDPI(void){
-	FPU_PREP_PUSH();
-	fpu.use80[TOP] = false; // we used the less precise version, drop the 80-bit precision
-	fpu.regs[TOP].d = PI;
-}
-
 static void FPU_FMUL(Bitu st, Bitu other){
 	//fpu.use80[st] = false; // we used the less precise version, drop the 80-bit precision
 	//fpu.regs[st].d*=fpu.regs[other].d;

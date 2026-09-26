@@ -550,24 +550,6 @@ static constexpr uint16_t sw_mask = FPUStatusWord::conditionAndExceptionMask;
         FPU_FPOP();
 #endif
 
-// load math constants
-#define FPUD_LOAD_CONST(op)                              \
-        FPUControlWord save_cw;                          \
-        auto cw = fpu.cw.allMasked();                    \
-        if (FPU_ArchitectureType < FPU_ARCHTYPE_387)     \
-            cw.RC = FPUControlWord::RoundMode::Nearest;  \
-        FPU_PREP_PUSH();                                 \
-        uint32_t top = TOP;                              \
-        __asm {                                          \
-        __asm    fnstcw  save_cw                         \
-        __asm    fldcw   cw                              \
-        __asm    mov     eax, top                        \
-        __asm    shl     eax, 4                          \
-        __asm    clx                                     \
-        __asm    op                                      \
-        __asm    fstp    TBYTE PTR fpu.p_regs[eax].m1    \
-        __asm    fldcw   save_cw                         \
-        }
 #else
 
 // !defined _MSC_VER
@@ -1006,24 +988,6 @@ static constexpr uint16_t sw_mask = FPUStatusWord::conditionAndExceptionMask;
 		FPU_FPOP();
 #endif
 
-// load math constants
-#define FPUD_LOAD_CONST(op)                             \
-        FPUControlWord save_cw;                         \
-        auto cw = fpu.cw.allMasked();                   \
-        if (FPU_ArchitectureType < FPU_ARCHTYPE_387)    \
-            cw.RC = FPUControlWord::RoundMode::Nearest; \
-        FPU_PREP_PUSH();                                \
-        __asm__ volatile (                              \
-            "fnstcw     %1                          \n" \
-            "fldcw      %2                          \n" \
-            clx"                                    \n" \
-            #op"                                    \n" \
-            "fstpt      %0                          \n" \
-            "fldcw      %1                          \n" \
-            : "=m" (fpu.p_regs[TOP]), "+m" (save_cw)    \
-            : "m" (cw)                                  \
-        );
-
 #endif
 
 static void FPU_FNOP(void){
@@ -1429,24 +1393,4 @@ static void FPU_FXTRACT(void) {
 
 static void FPU_FTST(void){
 	FPUD_EXAMINE(ftst)
-}
-
-static void FPU_FLDL2T(void){
-	FPUD_LOAD_CONST(fldl2t)
-}
-
-static void FPU_FLDL2E(void){
-	FPUD_LOAD_CONST(fldl2e)
-}
-
-static void FPU_FLDPI(void){
-	FPUD_LOAD_CONST(fldpi)
-}
-
-static void FPU_FLDLG2(void){
-	FPUD_LOAD_CONST(fldlg2)
-}
-
-static void FPU_FLDLN2(void){
-	FPUD_LOAD_CONST(fldln2)
 }

@@ -80,21 +80,6 @@ static long double FROUND(long double in){
 	}
 }
 
-// TODO: Incorporate into paging.h
-static inline uint64_t mem_readq(PhysPt addr) {
-    uint64_t tmp;
-
-    tmp  = (uint64_t)mem_readd(addr);
-    tmp |= (uint64_t)mem_readd(addr+4ul) << (uint64_t)32ul;
-
-    return tmp;
-}
-
-static inline void mem_writeq(PhysPt addr,uint64_t v) {
-    mem_writed(addr,    (uint32_t)v);
-    mem_writed(addr+4ul,(uint32_t)(v >> (uint64_t)32ul));
-}
-
 #define BIAS80 16383
 #define BIAS64 1023
 

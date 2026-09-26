@@ -31,19 +31,6 @@
 
 FPU fpu;
 
-// Helper functions for 64-bit memory access
-static inline uint64_t mem_readq(PhysPt addr) {
-	uint64_t tmp;
-	tmp  = (uint64_t)mem_readd(addr);
-	tmp |= (uint64_t)mem_readd(addr+4ul) << (uint64_t)32ul;
-	return tmp;
-}
-
-static inline void mem_writeq(PhysPt addr,uint64_t v) {
-	mem_writed(addr,    (uint32_t)v);
-	mem_writed(addr+4ul,(uint32_t)(v >> (uint64_t)32ul));
-}
-
 constexpr uint64_t QNaN = 0xFFF8'0000'0000'0000;
 
 namespace float80
@@ -1458,24 +1445,22 @@ void CPU_FXSAVE(PhysPt eaa) {
 }
 
 void CPU_FXRSTOR(PhysPt eaa) {
-	unsigned int i;
-
 	/* Ref: [https://www.felixcloutier.com/x86/fxsave] */
 	fpu.cw = mem_readw(eaa+0x000);					/* +0x000 FPU control word */
 	fpu.sw = mem_readw(eaa+0x002);					/* +0x002 FPU status word */
 	fpu.mxcsr = mem_readd(eaa+0x018);				/* +0x018 MXCSR */
 
 	/* NTS: Remember that st(i) TOP pointer is in FPU status word */
-
-	for (i=0;i < 8;i++) {
-#if C_FPU_X86
+	for (auto i = 0; i < 8; i++) {
+#ifdef HAS_LONG_DOUBLE
 		fpu.p_regs[STV(i)].m1 = mem_readd(eaa+0x020+(i*16)+0);
 		fpu.p_regs[STV(i)].m2 = mem_readd(eaa+0x020+(i*16)+4);
 		fpu.p_regs[STV(i)].m3 = mem_readw(eaa+0x020+(i*16)+8);
-#elif defined(HAS_LONG_DOUBLE)
-		fpu.regs_80[STV(i)].v = FPU_FLD80(eaa+0x020+(i*16));
 #else
-		fpu.regs[STV(i)].d = FPU_FLD80(eaa+0x020+(i*16),/*&*/fpu.regs_80[STV(i)]);
+        fpu.regs_80[STV(i)].raw.l = mem_readq(eaa+0x020+(i*16));
+        fpu.regs_80[STV(i)].raw.h = mem_readw(eaa+0x020+(i*16)+8);
+        auto cr = convert(fpu.regs_80[STV(i)]);
+        fpu.regs[STV(i)].d = cr.value;
 		fpu.use80[STV(i)] = true;
 #endif
 	}
@@ -1483,7 +1468,7 @@ void CPU_FXRSTOR(PhysPt eaa) {
     FPU_SetAbridgedTag(mem_readb(eaa+0x004));	/* +0x004 FPU tag words, abridged to a bitfield of 1=not empty 0=empty, register order NOT from TOP */
 
 	if (CPU_SSE()) {
-		for (i=0;i < 8;i++) {
+		for (auto i = 0; i < 8; i++) {
 			XMM_Reg &xmm = fpu.xmmreg[i];
 			xmm.u32[0] = mem_readd(eaa+0x0A0+(i*16)+0x0);
 			xmm.u32[1] = mem_readd(eaa+0x0A0+(i*16)+0x4);

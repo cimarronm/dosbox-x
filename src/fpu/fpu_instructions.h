@@ -23,6 +23,9 @@
 #include "cross.h"
 #include "fpu.h"
 
+#define BIAS80 16383
+#define BIAS64 1023
+
 static inline uint16_t FPU_GetTag()
 {
 	uint16_t tags = 0;

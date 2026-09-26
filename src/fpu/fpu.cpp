@@ -102,7 +102,8 @@ static ConvertResult convert(FPU_Reg_80 val)
         --exponent;
     }
 
-    const auto round_right = [&conversion, sign](uint64_t value, unsigned int shift) {
+    const auto round_right = [&conversion, sign, extended_integer_bit](uint64_t value,
+                                                                         unsigned int shift) {
         const auto truncated = shift < 64 ? value >> shift : 0;
         bool inexact = false;
         bool round_up = false;
@@ -129,7 +130,7 @@ static ConvertResult convert(FPU_Reg_80 val)
         return truncated + static_cast<uint64_t>(round_up);
     };
 
-    const auto overflow = [&conversion, &result, sign]() {
+    const auto overflow = [&conversion, &result, sign, double_fraction_mask]() {
         const auto round_mode = static_cast<FPUControlWord::RoundMode>(
                 static_cast<unsigned>(fpu.cw.RC));
         const auto to_infinity = round_mode == FPUControlWord::RoundMode::Nearest ||
@@ -258,9 +259,6 @@ void FPU_FINIT()
     fpu.regvalid = {};
     fpu.regvalid[8] = true; // the 9th register is always valid, it's used for temporary storage
 
-#ifndef HAS_LONG_DOUBLE
-    for (auto& fpu_reg_memcpy: fpus_regs_memcpy) fpu_reg_memcpy.ll = 0;
-#endif
 }
 
 void FPU_FLD_F80(PhysPt addr)

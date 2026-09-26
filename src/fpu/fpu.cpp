@@ -54,8 +54,10 @@ bool fpu_StackValid(int pos)
     return false;
 }
 
-void fpu_Push(FPU_Reg_80 val)
+void fpu_Push(const FPU_Reg_80& input)
 {
+    auto val = input;   // 32-bit ARM MSVC does not gaurantee 16-byte stack alignment so have to pass by ref
+                        // and create a copy here
     TOP = (TOP-1) & 7;
     if (fpu.regvalid[TOP]) {
         fpu.sw.IE = 1;

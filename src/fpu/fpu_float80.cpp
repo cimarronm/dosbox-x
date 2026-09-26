@@ -41,7 +41,7 @@ const FPU_Reg_80::raw_t LN2 = {
 };
 const uint8_t LN2_Extra2 = 3;
 
-ConvertResult convert(FPU_Reg_80 val)
+ConvertResult convert(const FPU_Reg_80& val)
 {
     constexpr auto double_exponent_bias = 1023;
     constexpr auto double_fraction_mask = 0x000F'FFFF'FFFF'FFFFULL;

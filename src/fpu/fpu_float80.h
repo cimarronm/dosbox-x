@@ -23,7 +23,7 @@ struct ConvertResult {
     uint16_t exceptions = 0;
 };
 
-ConvertResult convert(FPU_Reg_80 val);
+ConvertResult convert(const FPU_Reg_80& val);
 void round(FPU_Reg_80& val, uint8_t extra_two_bits);
 
 } // namespace float80

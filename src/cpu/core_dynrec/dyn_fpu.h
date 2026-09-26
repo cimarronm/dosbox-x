@@ -44,10 +44,6 @@ static void FPU_FNSTCW(PhysPt addr){
 	mem_writew(addr,fpu.cw);
 }
 
-static void FPU_FFREE(Bitu st) {
-	fpu.regvalid[st] = false;
-}
-
 
 #if C_FPU_X86
 #include "../../fpu/fpu_instructions_x86.h"
@@ -474,7 +470,6 @@ static void dyn_fpu_esc3(){
 			gen_call_function_raw(FPU_FPOP);
 			break;
 		case 0x05:	/* FLD 80 Bits Real */
-			gen_call_function_raw(FPU_PREP_PUSH);
 			dyn_fill_ea(FC_ADDR); 
 			gen_call_function_R(FPU_FLD_F80,FC_ADDR);
 			break;

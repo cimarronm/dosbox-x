@@ -1026,28 +1026,12 @@ static constexpr uint16_t sw_mask = FPUStatusWord::conditionAndExceptionMask;
 
 #endif
 
-static void FPU_FINIT(void) {
-	fpu.cw.init();
-	fpu.sw.init();
-    fpu.regvalid = {};
-    fpu.regvalid[8] = true;
-}
-
-static void FPU_FCLEX(void){
-	fpu.sw.clearExceptions();
-}
-
 static void FPU_FNOP(void){
 }
 
 static void FPU_PREP_PUSH(void){
 	TOP = (TOP - 1) &7;
 	fpu.regvalid[TOP] = true;
-}
-
-static void FPU_FPOP(void){
-	fpu.regvalid[TOP] = false;
-	TOP = ((TOP+1)&7);
 }
 
 static void FPU_FLD_F32(PhysPt addr,Bitu store_to) {
@@ -1070,13 +1054,6 @@ static void FPU_FLD_F64_EA(PhysPt addr) {
 	fpu.p_regs[8].m1 = mem_readd(addr);
 	fpu.p_regs[8].m2 = mem_readd(addr+4);
 	FPUD_LOAD_EA(fld,QWORD,l)
-}
-
-static void FPU_FLD_F80(PhysPt addr) {
-	fpu.p_regs[TOP].m1 = mem_readd(addr);
-	fpu.p_regs[TOP].m2 = mem_readd(addr+4);
-	fpu.p_regs[TOP].m3 = mem_readw(addr+8);
-	FPU_SET_C1(0);
 }
 
 static void FPU_FLD_I16(PhysPt addr,Bitu store_to) {
@@ -1433,20 +1410,6 @@ static void FPU_FSTENV(PhysPt addr, bool op16){
 	fpu.cw = fpu.cw.allMasked();
 }
 
-static void FPU_FLDENV(PhysPt addr, bool op16){
-	uint16_t tag;
-	if (op16) {
-		fpu.cw = mem_readw(addr+0);
-		fpu.sw = mem_readw(addr+2);
-		tag    = mem_readw(addr+4);
-	} else { 
-		fpu.cw = static_cast<uint16_t>(mem_readd(addr+0));
-		fpu.sw = static_cast<uint16_t>(mem_readd(addr+4));
-		tag    = static_cast<uint16_t>(mem_readd(addr+8));
-	}
-	FPU_SetTag(tag);
-}
-
 static void FPU_FSAVE(PhysPt addr, bool op16){
 	FPU_FSTENV(addr, op16);
 	PhysPt start = op16 ? 14:28;
@@ -1459,36 +1422,13 @@ static void FPU_FSAVE(PhysPt addr, bool op16){
 	FPU_FINIT();
 }
 
-static void FPU_FRSTOR(PhysPt addr, bool op16){
-	FPU_FLDENV(addr, op16);
-	PhysPt start = op16 ? 14:28;
-	for(unsigned i=0;i<8;i++){
-		fpu.p_regs[STV(i)].m1 = mem_readd(addr+start);
-		fpu.p_regs[STV(i)].m2 = mem_readd(addr+start+4);
-		fpu.p_regs[STV(i)].m3 = mem_readw(addr+start+8);
-		start+=10;
-	}
-}
-
 
 static void FPU_FXTRACT(void) {
 	FPUD_XTRACT
 }
 
-static void FPU_FCHS(void){
-	FPUD_TRIG(fchs)
-}
-
-static void FPU_FABS(void){
-	FPUD_TRIG(fabs)
-}
-
 static void FPU_FTST(void){
 	FPUD_EXAMINE(ftst)
-}
-
-static void FPU_FLD1(void){
-	FPUD_LOAD_CONST(fld1)
 }
 
 static void FPU_FLDL2T(void){
@@ -1509,8 +1449,4 @@ static void FPU_FLDLG2(void){
 
 static void FPU_FLDLN2(void){
 	FPUD_LOAD_CONST(fldln2)
-}
-
-static void FPU_FLDZ(void){
-	FPUD_LOAD_CONST(fldz)
 }

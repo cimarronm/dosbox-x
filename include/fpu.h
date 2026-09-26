@@ -72,7 +72,18 @@ constexpr double X87_TRIG_ARG_LIMIT = 0x1p63; // 2^63
 #define STV(i) FPU_StackIndex(i)
 
 
+void FPU_FABS();
+void FPU_FCHS();
+void FPU_FCLEX();
+void FPU_FFREE(int st);
+void FPU_FINIT();
+void FPU_FLD_F80(PhysPt addr);
+void FPU_FLD1();
 void FPU_FLDCW(PhysPt addr);
+void FPU_FLDENV(PhysPt addr, bool op16);
+void FPU_FLDZ();
+void FPU_FPOP();
+void FPU_FRSTOR(PhysPt addr, bool op16);
 
 static INLINE void FPU_SetTag(uint16_t tags){
 	for (auto i=0; i<8; i++)

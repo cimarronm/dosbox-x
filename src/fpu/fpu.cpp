@@ -20,18 +20,195 @@
 #include "dosbox.h"
 #if C_FPU
 
+#include <cfenv>
 #include <string>
-#include <math.h>
-#include <float.h>
-#include "paging.h"
-#include "cross.h"
-#include "mem.h"
+
 #include "cpu.h"
 #include "fpu.h"
 #include "logging.h"
-#include "../cpu/lazyflags.h"
+#include "mem.h"
+#include "paging.h"
 
 FPU fpu;
+
+// Helper functions for 64-bit memory access
+static inline uint64_t mem_readq(PhysPt addr) {
+	uint64_t tmp;
+	tmp  = (uint64_t)mem_readd(addr);
+	tmp |= (uint64_t)mem_readd(addr+4ul) << (uint64_t)32ul;
+	return tmp;
+}
+
+static inline void mem_writeq(PhysPt addr,uint64_t v) {
+	mem_writed(addr,    (uint32_t)v);
+	mem_writed(addr+4ul,(uint32_t)(v >> (uint64_t)32ul));
+}
+
+constexpr uint64_t QNaN = 0xFFF8'0000'0000'0000;
+
+namespace float80
+{
+    constexpr auto ExpBias = 16383U;
+    constexpr FPU_Reg_80::raw_t QNaN = {
+        0xC000'0000'0000'0000ULL, // integer bit and quiet-NaN bit
+        0xFFFFU                   // sign bit and all-one exponent
+    };
+    constexpr FPU_Reg_80::raw_t const1 = {
+        0x8000'0000'0000'0000ULL,
+        ExpBias
+    };
+};
+
+struct ConvertResult {
+    double value;
+    uint16_t exceptions = 0;
+};
+
+static ConvertResult convert(FPU_Reg_80 val)
+{
+    constexpr auto double_exponent_bias = 1023;
+    constexpr auto double_fraction_mask = 0x000F'FFFF'FFFF'FFFFULL;
+    constexpr auto double_quiet_nan_bit = 0x0008'0000'0000'0000ULL;
+    constexpr auto extended_integer_bit = 0x8000'0000'0000'0000ULL;
+
+    ConvertResult conversion = {};
+    FPU_Reg result = {};
+    const auto sign = static_cast<bool>(val.f.sign);
+    const auto exponent80 = val.f.exponent;
+    auto significand = val.f.mantissa;
+    result.f.sign = sign;
+
+    if (exponent80 == 0x7FFFU) {
+        result.f.exponent = 0x7FFU;
+        if (significand != extended_integer_bit) {
+            // Preserve the payload where possible, and always return a quiet NaN.
+            result.f.mantissa = ((significand >> 11) & double_fraction_mask) |
+                                double_quiet_nan_bit;
+        }
+        conversion.value = result.d;
+        return conversion;
+    }
+
+    if (significand == 0) {
+        conversion.value = result.d;
+        return conversion;
+    }
+
+    // An 80-bit subnormal uses an exponent of 1 - bias rather than -bias.
+    int exponent = static_cast<int>(exponent80 ? exponent80 : 1) -
+                   static_cast<int>(float80::ExpBias);
+    while (!(significand & extended_integer_bit)) {
+        significand <<= 1;
+        --exponent;
+    }
+
+    const auto round_right = [&conversion, sign](uint64_t value, unsigned int shift) {
+        const auto truncated = shift < 64 ? value >> shift : 0;
+        bool inexact = false;
+        bool round_up = false;
+
+        if (shift < 64) {
+            const auto half = 1ULL << (shift - 1);
+            const auto remainder = value & ((half << 1) - 1);
+            inexact = remainder != 0;
+            if (fpu.cw.RC == FPUControlWord::RoundMode::Nearest)
+                round_up = remainder > half || (remainder == half && (truncated & 1));
+        } else {
+            inexact = value != 0;
+            if (fpu.cw.RC == FPUControlWord::RoundMode::Nearest && shift == 64)
+                round_up = value > extended_integer_bit;
+        }
+
+        if (inexact) {
+            conversion.exceptions |= FPU_EX_PRECISION;
+            if (fpu.cw.RC == FPUControlWord::RoundMode::Down)
+                round_up = sign;
+            else if (fpu.cw.RC == FPUControlWord::RoundMode::Up)
+                round_up = !sign;
+        }
+        return truncated + static_cast<uint64_t>(round_up);
+    };
+
+    const auto overflow = [&conversion, &result, sign]() {
+        const auto round_mode = static_cast<FPUControlWord::RoundMode>(
+                static_cast<unsigned>(fpu.cw.RC));
+        const auto to_infinity = round_mode == FPUControlWord::RoundMode::Nearest ||
+                                 (round_mode == FPUControlWord::RoundMode::Up && !sign) ||
+                                 (round_mode == FPUControlWord::RoundMode::Down && sign);
+        result.f.exponent = to_infinity ? 0x7FFU : 0x7FEU;
+        result.f.mantissa = to_infinity ? 0 : double_fraction_mask;
+        conversion.exceptions |= FPU_EX_OVERFLOW | FPU_EX_PRECISION;
+        conversion.value = result.d;
+        return conversion;
+    };
+
+    if (exponent > 1023)
+        return overflow();
+
+    if (exponent >= -1022) {
+        auto rounded = round_right(significand, 11);
+        if (rounded == (1ULL << 53)) {
+            rounded >>= 1;
+            if (++exponent > 1023)
+                return overflow();
+        }
+        result.f.exponent = exponent + double_exponent_bias;
+        result.f.mantissa = rounded & double_fraction_mask;
+        conversion.value = result.d;
+        return conversion;
+    }
+
+    // A subnormal double is an integer multiple of 2^-1074.
+    const auto fraction = round_right(significand,
+                                      static_cast<unsigned int>(-exponent - 1011));
+    if (fraction == (1ULL << 52)) {
+        result.f.exponent = 1;
+    } else {
+        result.f.mantissa = fraction;
+        if (conversion.exceptions & FPU_EX_PRECISION)
+            conversion.exceptions |= FPU_EX_UNDERFLOW;
+    }
+    conversion.value = result.d;
+    return conversion;
+}
+
+void fpu_RaiseException()
+{
+    // TODO
+}
+
+bool fpu_StackValid(int pos)
+{
+    if (fpu.regvalid[pos]) return true;
+    fpu.sw.IE = 1;
+    fpu.sw.SF = 1;
+    fpu.sw.C1 = 0;
+    fpu_RaiseException();
+    fpu.regvalid[pos] = true;
+    fpu.regs_80[pos].raw = float80::QNaN;
+#ifndef HAS_LONG_DOUBLE
+    fpu.regs[pos].ll = QNaN;
+#endif
+    return false;
+}
+
+void fpu_Push(FPU_Reg_80 val)
+{
+    TOP = (TOP-1) & 7;
+    if (fpu.regvalid[TOP]) {
+        fpu.sw.IE = 1;
+        fpu.sw.SF = 1;
+        fpu.sw.C1 = 1;
+        fpu_RaiseException();
+        val.raw = float80::QNaN;
+    }
+    fpu.regs_80[TOP] = val;
+    fpu.regvalid[TOP] = true;
+#ifndef HAS_LONG_DOUBLE
+    auto cr = convert(val);
+    fpu.regs[TOP].d = cr.value;
+#endif
+}
 
 void FPU_LOG_WARN(Bitu tree, bool ea, Bitu group, Bitu sub)
 {
@@ -42,11 +219,117 @@ void FPU_LOG_WARN(Bitu tree, bool ea, Bitu group, Bitu sub)
 	                        (long unsigned int)sub);
 }
 
+void FPU_FABS()
+{
+    if (fpu_StackValid(TOP)) {
+        fpu.regs_80[TOP].f.sign = 0;
+#ifndef HAS_LONG_DOUBLE
+        fpu.regs[TOP].f.sign = 0;
+#endif
+        fpu.sw.C1 = 0;
+    }
+}
+
+void FPU_FCHS()
+{
+    if (fpu_StackValid(TOP)) {
+        fpu.regs_80[TOP].f.sign ^= 1;
+#ifndef HAS_LONG_DOUBLE
+        fpu.regs[TOP].f.sign ^= 1;
+#endif
+        fpu.sw.C1 = 0;
+    }
+}
+
+void FPU_FCLEX()
+{
+	fpu.sw.clearExceptions();
+}
+
+void FPU_FFREE(int st)
+{
+	fpu.regvalid[st] = false;
+}
+
+void FPU_FINIT()
+{
+	fpu.cw.init();
+	fpu.sw.init();
+    fpu.regvalid = {};
+    fpu.regvalid[8] = true; // the 9th register is always valid, it's used for temporary storage
+
+#ifndef HAS_LONG_DOUBLE
+    for (auto& fpu_reg_memcpy: fpus_regs_memcpy) fpu_reg_memcpy.ll = 0;
+#endif
+}
+
+void FPU_FLD_F80(PhysPt addr)
+{
+    FPU_Reg_80 val;
+	val.raw.l = mem_readq(addr);
+	val.raw.h = mem_readw(addr+8);
+    fpu.sw.C1 = 0;
+    fpu_Push(val);
+}
+
+void FPU_FLD1()
+{
+    FPU_Reg_80 val;
+    val.raw = float80::const1;
+    fpu.sw.C1 = 0;
+    fpu_Push(val);
+}
+
 void FPU_FLDCW(PhysPt addr)
 {
 	fpu.cw = mem_readw(addr);
 }
 
+void FPU_FLDENV(PhysPt addr, bool op16)
+{
+    uint16_t tag;
+    if (op16) {
+        fpu.cw = mem_readw(addr+0);
+        fpu.sw = mem_readw(addr+2);
+        tag    = mem_readw(addr+4);
+    } else {
+        fpu.cw = static_cast<uint16_t>(mem_readd(addr+0));
+        fpu.sw = static_cast<uint16_t>(mem_readd(addr+4));
+        tag    = static_cast<uint16_t>(mem_readd(addr+8));
+    }
+    FPU_SetTag(tag);
+}
+
+void FPU_FLDZ()
+{
+    FPU_Reg_80 val = {};
+    fpu.sw.C1 = 0;
+    fpu_Push(val);
+}
+
+void FPU_FPOP()
+{
+    fpu_StackValid(TOP);
+	fpu.regvalid[TOP] = false;
+	TOP = (TOP+1) & 7;
+}
+
+void FPU_FRSTOR(PhysPt addr, bool op16)
+{
+	FPU_FLDENV(addr, op16);
+
+	auto start = op16 ? 14:28;
+	for(auto i = 0; i < 8; i++) {
+		fpu.regs_80[STV(i)].raw.l = mem_readq(addr+start);
+		fpu.regs_80[STV(i)].raw.h = mem_readw(addr+start+8);
+#ifndef HAS_LONG_DOUBLE
+        auto cr = convert(fpu.regs_80[STV(i)]);
+        fpu.regs[STV(i)].d = cr.value;
+		fpu.use80[STV(i)] = true;
+#endif
+		start += 10;
+	}
+}
 
 #if C_FPU_X86
 #include "fpu_instructions_x86.h"
@@ -450,7 +733,6 @@ void FPU_ESC3_EA(Bitu rm,PhysPt addr) {
 			FPUStackPushState push_state;
 
 			try {
-				FPU_PREP_PUSH();
 				FPU_FLD_F80(addr);
 			}
             catch (const GuestPageFaultException& pf) {
@@ -624,7 +906,7 @@ void FPU_ESC5_Normal(Bitu rm) {
 	Bitu sub=(rm & 7);
 	switch(group){
 	case 0x00: /* FFREE STi */
-		fpu.regvalid[STV(sub)] = false;
+        FPU_FFREE(STV(sub));
 		break;
 	case 0x01: /* FXCH STi*/
 		FPU_FXCH(TOP,STV(sub));
@@ -781,7 +1063,7 @@ void FPU_ESC7_Normal(Bitu rm) {
 	Bitu sub=(rm & 7);
 	switch (group){
 	case 0x00: /* FFREEP STi*/
-		fpu.regvalid[STV(sub)] = false;
+        FPU_FFREE(STV(sub));
 		FPU_FPOP();
 		break;
 	case 0x01: /* FXCH STi*/
@@ -1108,6 +1390,10 @@ void FPU_Init() {
 
 	FPU_Selftest();
 	FPU_FINIT();
+
+    // Don't trigger any exceptions on the host
+    fenv_t tmp;
+    std::feholdexcept(&tmp);
 }
 
 static void FPU_SetAbridgedTag(uint8_t b)

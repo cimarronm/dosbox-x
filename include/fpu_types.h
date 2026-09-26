@@ -215,7 +215,8 @@ extern MMX_reg * reg_mmx[8];
 extern MMX_reg * lookupRMregMM[256];
 
 #pragma pack(push,1)
-typedef union alignas(16) {
+union alignas(16) FPU_Reg_80
+{
 // TODO: The configure script needs to use "long double" on x86/x86_64 and verify sizeof(long double) == 10,
 //       else undef a macro to let the code emulate long double 80-bit IEEE. Also needs to determine host
 //       byte order here so host long double matches our struct.
@@ -239,7 +240,7 @@ typedef union alignas(16) {
 	static_assert( offsetof(raw_t,l) == 0, "oops" );
 	static_assert( offsetof(raw_t,h) == 8, "oops" );
 	static_assert( offsetof(MMX_reg,q) == 0, "oops" );
-} FPU_Reg_80;
+};
 static_assert( sizeof(FPU_Reg_80) == 16, "FPU_Reg_80 error" );/*NTS: GCC can and often will define long double as 16 bytes or at least align by 16 bytes*/
 // ^ Remember that in 80-bit extended, the mantissa contains both the fraction and integer bit. There is no
 //   "implied bit" like 32-bit and 64-bit formats.

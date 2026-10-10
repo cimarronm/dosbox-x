@@ -141,7 +141,7 @@ void FPU_F2XM1()
     fpu.sw.C1 = 0;
     if (fpu_detail::CheckInputs(TOP)) return;
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     FPUD_TRIG(f2xm1)
@@ -167,12 +167,12 @@ void FPU_FADD(int op1, int op2)
         fpu_detail::InputIsInfinity(op2) &&
         fpu_detail::InputIsNegative(op1) != fpu_detail::InputIsNegative(op2)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
 	FPUD_ARITH1(faddp);
@@ -259,7 +259,7 @@ void FPU_FBST(PhysPt addr)
     fpu.sw.C1 = rounded_up;
     if (exceptions) {
         FPU_SetException(exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     if (exceptions & FPU_EX_INVALID) {
@@ -335,12 +335,12 @@ void FPU_FCOS()
 
     if (fpu_detail::InputIsInfinity(TOP)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     FPUD_TRIG(fcos);
@@ -380,21 +380,21 @@ void FPU_FDIV(int op1, int op2)
         (fpu_detail::InputIsInfinity(op1) &&
          fpu_detail::InputIsInfinity(op2))) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
     if (fpu_detail::InputIsZero(op2) && !fpu_detail::InputIsInfinity(op1)) {
         fpu.sw.ZE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetInfinity(op1,
                                 fpu_detail::InputIsNegative(op1) !=
                                         fpu_detail::InputIsNegative(op2));
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
     FPUD_ARITH3(fdivp)
@@ -425,21 +425,21 @@ void FPU_FDIVR(int op1, int op2)
         (fpu_detail::InputIsInfinity(op1) &&
          fpu_detail::InputIsInfinity(op2))) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
     if (fpu_detail::InputIsZero(op1) && !fpu_detail::InputIsInfinity(op2)) {
         fpu.sw.ZE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetInfinity(op1,
                                 fpu_detail::InputIsNegative(op1) !=
                                         fpu_detail::InputIsNegative(op2));
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
     FPUD_ARITH3(fdivrp)
@@ -695,12 +695,12 @@ void FPU_FMUL(int op1, int op2)
         (fpu_detail::InputIsInfinity(op1) &&
          fpu_detail::InputIsZero(op2))) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
     FPUD_ARITH1(fmulp)
@@ -730,11 +730,12 @@ void FPU_FPATAN()
 {
     fpu.sw.C1 = 0;
     if (fpu_detail::CheckInputs(STV(1), TOP)) {
+        if (fpu_detail::CheckException()) return;
         FPU_FPOP();
         return;
     }
 
-    fpu_detail::CheckInputDenormals(STV(1), TOP);
+    if (fpu_detail::CheckInputDenormals(STV(1), TOP)) return;
 
 #if C_FPU_X86
     FPUD_WITH_POP(fpatan)
@@ -776,19 +777,20 @@ void FPU_FPTAN()
     fpu.sw.C2 = 0;
 
     if (fpu_detail::CheckInputs(TOP)) {
+        if (fpu_detail::CheckException()) return;
         fpu_Push(FPU_Reg_80::QNaN);
         return;
     }
 
     if (fpu_detail::InputIsInfinity(TOP)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         fpu_Push(FPU_Reg_80::QNaN);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     const auto output = (TOP - 1) & 7;
@@ -829,12 +831,12 @@ void FPU_FPREM()
 
     if (fpu_detail::InputIsInfinity(TOP) || fpu_detail::InputIsZero(STV(1))) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP, STV(1));
+    if (fpu_detail::CheckInputDenormals(TOP, STV(1))) return;
 
     if (fpu_detail::InputIsZero(TOP) || fpu_detail::InputIsInfinity(STV(1))) {
         fpu.sw.C0 = 0;
@@ -868,12 +870,12 @@ void FPU_FPREM1()
 
     if (fpu_detail::InputIsInfinity(TOP) || fpu_detail::InputIsZero(STV(1))) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP, STV(1));
+    if (fpu_detail::CheckInputDenormals(TOP, STV(1))) return;
 
     if (fpu_detail::InputIsZero(TOP) || fpu_detail::InputIsInfinity(STV(1))) {
         fpu.sw.C0 = 0;
@@ -906,7 +908,7 @@ void FPU_FRNDINT()
     fpu.sw.C1 = 0;
     if (fpu_detail::CheckInputs(TOP)) return;
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     FPUD_ARITH2(frndint)
@@ -975,12 +977,12 @@ void FPU_FSIN()
 
     if (fpu_detail::InputIsInfinity(TOP)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     FPUD_TRIG(fsin);
@@ -1016,19 +1018,20 @@ void FPU_FSINCOS()
     fpu.sw.C1 = 0;
     fpu.sw.C2 = 0;
     if (fpu_detail::CheckInputs(TOP)) {
+        if (fpu_detail::CheckException()) return;
         fpu_Push(FPU_Reg_80::QNaN);
         return;
     }
 
     if (fpu_detail::InputIsInfinity(TOP)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         fpu_Push(fpu.regs_80[TOP]);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     const auto output = (TOP - 1) & 7;
@@ -1084,7 +1087,7 @@ void FPU_FSCALE()
 
     if (fpu_detail::CheckInputs(TOP, STV(1))) return;
 
-    fpu_detail::CheckInputDenormals(TOP, STV(1));
+    if (fpu_detail::CheckInputDenormals(TOP, STV(1))) return;
 
 #if C_FPU_X86
     FPUD_REMAINDER(fscale)
@@ -1124,12 +1127,12 @@ void FPU_FSQRT()
 
     if (fpu_detail::InputIsNegative(TOP) && !fpu_detail::InputIsZero(TOP)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(TOP);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
 #if C_FPU_X86
     FPUD_ARITH2(fsqrt)
@@ -1217,7 +1220,7 @@ void FPU_FST_F32(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writed(addr, result.raw);
@@ -1246,7 +1249,7 @@ void FPU_FST_F64(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writeq(addr, result.raw);
@@ -1269,7 +1272,7 @@ void FPU_FST_I16(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writew(addr, static_cast<uint16_t>(conversion.value));
@@ -1288,7 +1291,7 @@ void FPU_FISTTP_I16(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writew(addr, static_cast<uint16_t>(conversion.value));
@@ -1305,7 +1308,7 @@ void FPU_FST_I32(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writed(addr, static_cast<uint32_t>(conversion.value));
@@ -1322,7 +1325,7 @@ void FPU_FISTTP_I32(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writed(addr, static_cast<uint32_t>(conversion.value));
@@ -1339,7 +1342,7 @@ void FPU_FST_I64(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writeq(addr, static_cast<uint64_t>(conversion.value));
@@ -1356,7 +1359,7 @@ void FPU_FISTTP_I64(PhysPt addr)
 
     if (conversion.exceptions) {
         FPU_SetException(conversion.exceptions);
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 
     mem_writeq(addr, static_cast<uint64_t>(conversion.value));
@@ -1371,12 +1374,12 @@ void FPU_FSUB(int op1, int op2)
         fpu_detail::InputIsInfinity(op2) &&
         fpu_detail::InputIsNegative(op1) == fpu_detail::InputIsNegative(op2)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
     FPUD_ARITH1(fsubp)
@@ -1406,12 +1409,12 @@ void FPU_FSUBR(int op1, int op2)
         fpu_detail::InputIsInfinity(op2) &&
         fpu_detail::InputIsNegative(op1) == fpu_detail::InputIsNegative(op2)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(op1);
         return;
     }
 
-    fpu_detail::CheckInputDenormals(op1, op2);
+    if (fpu_detail::CheckInputDenormals(op1, op2)) return;
 
 #if C_FPU_X86
     FPUD_ARITH1(fsubrp)
@@ -1522,6 +1525,7 @@ void FPU_FXTRACT()
 {
     fpu.sw.C1 = 0;
     if (fpu_detail::CheckInputs(TOP)) {
+        if (fpu_detail::CheckException()) return;
         FPU_Reg_80 source = {};
         fpu_GetST80(source);
         fpu_Push(source);
@@ -1529,7 +1533,7 @@ void FPU_FXTRACT()
     }
 
 #if C_FPU_X86
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
     const auto output = (TOP - 1) & 7;
     FPUD_XTRACT
     fpu_Push(fpu.regs_80[output]);
@@ -1539,7 +1543,7 @@ void FPU_FXTRACT()
 
     if (fpu_detail::InputIsZero(TOP)) {
         fpu.sw.ZE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetInfinity(TOP, true);
         fpu_Push(source);
         return;
@@ -1551,7 +1555,7 @@ void FPU_FXTRACT()
         return;
     }
 
-    fpu_detail::CheckInputDenormals(TOP);
+    if (fpu_detail::CheckInputDenormals(TOP)) return;
 
     const auto set_exponent = [](int exponent) {
         FPU_Reg_80 value = {};
@@ -1595,6 +1599,7 @@ void FPU_FYL2X()
     const auto y = STV(1);
 
     if (fpu_detail::CheckInputs(y, x)) {
+        if (fpu_detail::CheckException()) return;
         FPU_FPOP();
         return;
     }
@@ -1605,26 +1610,26 @@ void FPU_FYL2X()
     if (fpu_detail::InputIsNegative(x) &&
         !x_is_zero) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(y);
         FPU_FPOP();
         return;
     }
     if (x_is_zero && y_is_zero) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(y);
         FPU_FPOP();
         return;
     } else if (x_is_zero && !y_is_infinity) {
         fpu.sw.ZE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetInfinity(y, !fpu_detail::InputIsNegative(y));
         FPU_FPOP();
         return;
     }
 
-    fpu_detail::CheckInputDenormals(y, x);
+    if (fpu_detail::CheckInputDenormals(y, x)) return;
 
 #if C_FPU_X86
     FPUD_FYL2X(fyl2x)
@@ -1662,19 +1667,20 @@ void FPU_FYL2XP1()
     const auto y = STV(1);
 
     if (fpu_detail::CheckInputs(y, x)) {
+        if (fpu_detail::CheckException()) return;
         FPU_FPOP();
         return;
     }
 
     if (fpu_detail::InputIsZero(x) && fpu_detail::InputIsInfinity(y)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
         fpu_detail::SetQNaN(y);
         FPU_FPOP();
         return;
     }
 
-    fpu_detail::CheckInputDenormals(x);
+    if (fpu_detail::CheckInputDenormals(x)) return;
 
 #if C_FPU_X86
     FPUD_WITH_POP(fyl2xp1)

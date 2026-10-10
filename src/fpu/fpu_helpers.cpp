@@ -112,17 +112,19 @@ void CalculatePartialRemainder(T& dividend, T divisor, RemainderMode mode)
 
 } // namespace
 
-void CheckException()
+bool CheckException()
 {
     const auto raised = fpu.sw.reg & FPUStatusWord::exceptionMask;
     const auto masked = fpu.cw.reg & FPUStatusWord::exceptionMask;
 
-    if ((raised & ~masked) == 0) return;
+    if ((raised & ~masked) == 0) return false;
 
     fpu.sw.ES = true;
     fpu.sw.B = true;
 
     if (!(cpu.cr0 & CR0_NUMERICERROR)) PIC_ActivateIRQ(fpu_irq);
+
+    return true;
 }
 
 void SetStatusFromHostExceptions()
@@ -244,20 +246,20 @@ bool InputIsZero(int op)
 #endif
 }
 
-void CheckInputDenormals(int op)
+bool CheckInputDenormals(int op)
 {
-    if (!InputIsSubnormal(op)) return;
+    if (!InputIsSubnormal(op)) return false;
 
     fpu.sw.DE = 1;
-    CheckException();
+    return CheckException();
 }
 
-void CheckInputDenormals(int op1, int op2)
+bool CheckInputDenormals(int op1, int op2)
 {
-    if (!InputIsSubnormal(op1) && !InputIsSubnormal(op2)) return;
+    if (!InputIsSubnormal(op1) && !InputIsSubnormal(op2)) return false;
 
     fpu.sw.DE = 1;
-    CheckException();
+    return CheckException();
 }
 
 void PartialRemainder(double& dividend, double divisor, RemainderMode mode)
@@ -274,35 +276,36 @@ void PartialRemainder(long double& dividend, long double divisor, RemainderMode 
 
 bool CheckInputs(int op)
 {
-    StackValid(op);
+    if (!StackValid(op)) return true;
     const auto is_nan = InputIsNaN(op);
     const auto is_signaling_nan = InputIsSignalingNaN(op);
 
     if (is_signaling_nan) {
-        QuietInputNaN(op);
         fpu.sw.IE = 1;
-        CheckException();
+        if (CheckException()) return true;
+        QuietInputNaN(op);
     }
     return is_nan;
 }
 
 bool CheckInputs(int op1, int op2, bool propagate_nan)
 {
-    StackValid(op2);
-    StackValid(op1);
+    const auto op2_valid = StackValid(op2);
+    const auto op1_valid = StackValid(op1);
+    if (!op1_valid || !op2_valid) return true;
     const auto op1_is_nan = InputIsNaN(op1);
     const auto op2_is_nan = InputIsNaN(op2);
     const auto op1_is_signaling_nan = InputIsSignalingNaN(op1);
     const auto op2_is_signaling_nan = InputIsSignalingNaN(op2);
 
+    if (op1_is_signaling_nan || op2_is_signaling_nan) {
+        fpu.sw.IE = 1;
+        if (CheckException()) return true;
+    }
     if (op1_is_signaling_nan && propagate_nan)
         QuietInputNaN(op1);
     if (op2_is_signaling_nan && propagate_nan)
         QuietInputNaN(op2);
-    if (op1_is_signaling_nan || op2_is_signaling_nan) {
-        fpu.sw.IE = 1;
-        CheckException();
-    }
     if (op2_is_nan && propagate_nan) {
         SetQNaN(op1);
     }
@@ -320,16 +323,17 @@ void RaiseLoadExceptions(bool denormal, bool signaling_nan)
     }
 }
 
-void Compare(int op1, int op2, bool ordered)
+bool Compare(int op1, int op2, bool ordered)
 {
     const auto has_nan = CheckInputs(op1, op2, false);
-    if (!has_nan) CheckInputDenormals(op1, op2);
+    if (has_nan && CheckException()) return true;
+    if (!has_nan && CheckInputDenormals(op1, op2)) return true;
 
     // An 8087/287 compares infinities as equal regardless of their signs.
     if (FPU_ArchitectureType < FPU_ARCHTYPE_387 &&
         InputIsInfinity(op1) && InputIsInfinity(op2)) {
         SetComparisonFlags(false, true, false);
-        return;
+        return false;
     }
 
 #if C_FPU_X86
@@ -355,7 +359,7 @@ void Compare(int op1, int op2, bool ordered)
     }
 #endif
 
-    CheckException();
+    return CheckException();
 }
 
 void CompareToCpuFlags(int op1, int op2, bool ordered)
@@ -369,7 +373,13 @@ void CompareToCpuFlags(int op1, int op2, bool ordered)
     const auto old_c2 = fpu.sw.C2;
     const auto old_c3 = fpu.sw.C3;
 
-    Compare(op1, op2, ordered);
+    if (Compare(op1, op2, ordered)) {
+        fpu.sw.C0 = old_c0;
+        fpu.sw.C1 = 0;
+        fpu.sw.C2 = old_c2;
+        fpu.sw.C3 = old_c3;
+        return;
+    }
 
     const auto compare_c0 = fpu.sw.C0;
     const auto compare_c2 = fpu.sw.C2;

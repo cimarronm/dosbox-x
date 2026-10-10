@@ -11,6 +11,7 @@
 #include "fpu_helpers.h"
 #include "fpu_state.h"
 #include "fpu_types.h"
+#include "pic.h"
 #if C_FPU_X86
 #include "fpu_x86_assembly.h"
 #endif
@@ -18,6 +19,8 @@
 namespace fpu_detail {
 
 namespace {
+
+constexpr Bitu fpu_irq = 13;
 
 template <typename T>
 InputClass Classify(const T& input)
@@ -111,7 +114,15 @@ void CalculatePartialRemainder(T& dividend, T divisor, RemainderMode mode)
 
 void CheckException()
 {
-    // TODO
+    const auto raised = fpu.sw.reg & FPUStatusWord::exceptionMask;
+    const auto masked = fpu.cw.reg & FPUStatusWord::exceptionMask;
+
+    if ((raised & ~masked) == 0) return;
+
+    fpu.sw.ES = true;
+    fpu.sw.B = true;
+
+    if (!(cpu.cr0 & CR0_NUMERICERROR)) PIC_ActivateIRQ(fpu_irq);
 }
 
 void SetStatusFromHostExceptions()
@@ -377,5 +388,14 @@ void CompareToCpuFlags(int op1, int op2, bool ordered)
 }
 
 } // namespace fpu_detail
+
+bool FPU_NumericExceptionPending()
+{
+    if (!(cpu.cr0 & CR0_NUMERICERROR)) return false;
+
+    const auto raised = fpu.sw.reg & FPUStatusWord::exceptionMask;
+    const auto masked = fpu.cw.reg & FPUStatusWord::exceptionMask;
+    return (raised & ~masked) != 0;
+}
 
 #endif // C_FPU

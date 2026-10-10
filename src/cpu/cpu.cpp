@@ -1179,8 +1179,10 @@ void CPU_Exception(Bitu which,Bitu error ) {
 		}
 	}
 
+	const auto has_error_code = which == EXCEPTION_DF ||
+	                            (which >= EXCEPTION_TS && which <= EXCEPTION_PF);
 	cpu.exception.error=error;
-	CPU_Interrupt(which,CPU_INT_EXCEPTION | ((which>=8) ? CPU_INT_HAS_ERROR : 0),reg_eip);
+	CPU_Interrupt(which, CPU_INT_EXCEPTION | (has_error_code ? CPU_INT_HAS_ERROR : 0), reg_eip);
 
 	/* allow recursive page faults. required for multitasking OSes like Windows 95.
 	 * we set this AFTER CPU_Interrupt so that if CPU_Interrupt faults while starting

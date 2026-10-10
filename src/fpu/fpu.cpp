@@ -32,6 +32,7 @@
 #include "fpu_helpers.h"
 #include "logging.h"
 #include "mem.h"
+#include "pic.h"
 #if C_FPU_X86
 #include "fpu_x86_assembly.h"
 #endif
@@ -298,6 +299,7 @@ void FPU_FCHS()
 
 void FPU_FCLEX()
 {
+	if (fpu.sw.ES && !(cpu.cr0 & CR0_NUMERICERROR)) PIC_DeActivateIRQ(13);
 	fpu.sw.clearExceptions();
 }
 
@@ -466,6 +468,7 @@ void FPU_FFREE(int st)
 
 void FPU_FINIT()
 {
+	if (fpu.sw.ES && !(cpu.cr0 & CR0_NUMERICERROR)) PIC_DeActivateIRQ(13);
 	fpu.cw.init();
 	fpu.sw.init();
     fpu.regvalid = {};

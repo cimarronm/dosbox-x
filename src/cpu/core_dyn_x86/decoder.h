@@ -441,6 +441,28 @@ static void dyn_check_bool_exception_al(void) {
 	used_save_info++;
 }
 
+#ifdef X86_DYNFPU_DH_ENABLED
+static void dyn_check_bool_normal_al(void) {
+	cache_addw(0xC084);     // test al,al
+	save_info[used_save_info].branch_pos=gen_create_branch_long(BR_NZ);
+	dyn_savestate(&save_info[used_save_info].state);
+	if (!decode.cycles) decode.cycles++;
+	save_info[used_save_info].cycles=decode.cycles;
+	save_info[used_save_info].eip_change=decode.code-decode.code_start;
+	if (!cpu.code.big) save_info[used_save_info].eip_change&=0xffff;
+	save_info[used_save_info].type=normal;
+	used_save_info++;
+}
+
+static void dyn_dh_fpu_post_instruction(void) {
+	gen_call_function((void *)&dh_fpu_update_mode, "");
+	gen_call_function((void *)&dh_fpu_take_numeric_exception, "");
+	dyn_check_bool_exception_al();
+	gen_call_function((void *)&dh_fpu_mode_change_pending, "");
+	dyn_check_bool_normal_al();
+}
+#endif
+
 #include "pic.h"
 
 static void dyn_check_irqrequest(void) {
@@ -460,6 +482,9 @@ static void dyn_check_irqrequest(void) {
 static void dyn_fpu_post_instruction(void) {
 	gen_call_function((void *)&FPU_NumericException, "");
 	dyn_check_bool_exception_al();
+#ifdef X86_DYNFPU_DH_ENABLED
+	if (dyn_dh_fpu.dh_fpu_allowed) dyn_dh_fpu_post_instruction();
+#endif
 	dyn_check_irqrequest();
 }
 

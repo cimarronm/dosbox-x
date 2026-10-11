@@ -83,7 +83,7 @@ void fpu_Push(const FPU_Reg_80& input)
         fpu.sw.IE = 1;
         fpu.sw.SF = 1;
         fpu.sw.C1 = 1;
-        fpu_detail::CheckException();
+        (void)fpu_detail::CheckException();
         val = FPU_Reg_80::QNaN;
     }
     fpu.regs_80[TOP] = val;
@@ -156,7 +156,7 @@ void FPU_F2XM1()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FADD(int op1, int op2)
@@ -186,7 +186,7 @@ void FPU_FADD(int op1, int op2)
  #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FADD_EA(int op1)
@@ -368,7 +368,7 @@ void FPU_FCOS()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FDIV(int op1, int op2)
@@ -408,7 +408,7 @@ void FPU_FDIV(int op1, int op2)
   #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FDIV_EA(int op1)
@@ -453,7 +453,7 @@ void FPU_FDIVR(int op1, int op2)
   #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FDIVR_EA(int op1)
@@ -508,7 +508,7 @@ void FPU_FLD_F32_EA(PhysPt addr)
 #endif
     if (IsSNaN(val)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 }
 
@@ -533,7 +533,7 @@ void FPU_FLD_F64_EA(PhysPt addr)
 #endif
     if (IsSNaN(val)) {
         fpu.sw.IE = 1;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 }
 
@@ -714,7 +714,7 @@ void FPU_FMUL(int op1, int op2)
   #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FMUL_EA(int op1)
@@ -758,7 +758,7 @@ void FPU_FPATAN()
     FPU_FPOP();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FPOP()
@@ -824,7 +824,7 @@ void FPU_FPTAN()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FPREM()
@@ -863,7 +863,7 @@ void FPU_FPREM()
   #endif
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FPREM1()
@@ -902,7 +902,7 @@ void FPU_FPREM1()
   #endif
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FRNDINT()
@@ -952,7 +952,7 @@ void FPU_FRNDINT()
         fpu.sw.PE = 1;
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FRSTOR(PhysPt addr, bool op16)
@@ -1012,7 +1012,7 @@ void FPU_FSIN()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FSINCOS()
@@ -1080,7 +1080,7 @@ void FPU_FSINCOS()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FSCALE()
@@ -1118,7 +1118,7 @@ void FPU_FSCALE()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FSQRT()
@@ -1150,7 +1150,7 @@ void FPU_FSQRT()
     fpu_detail::SetStatusFromHostExceptions();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FST(int src, int dst)
@@ -1395,7 +1395,7 @@ void FPU_FSUB(int op1, int op2)
   #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FSUB_EA(int op1)
@@ -1430,7 +1430,7 @@ void FPU_FSUBR(int op1, int op2)
   #endif
     fpu_detail::SetStatusFromHostExceptions();
 #endif
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FSUBR_EA(int op1)
@@ -1519,7 +1519,7 @@ void FPU_FXCH(int op1, int op2)
         fpu.sw.IE = 1;
         fpu.sw.SF = 1;
         fpu.sw.C1 = 0;
-        fpu_detail::CheckException();
+        if (fpu_detail::CheckException()) return;
     }
 }
 
@@ -1589,7 +1589,7 @@ void FPU_FXTRACT()
 
     set_exponent(exponent);
     fpu_Push(significand_value);
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 #endif
 }
 
@@ -1658,7 +1658,7 @@ void FPU_FYL2X()
     FPU_FPOP();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 void FPU_FYL2XP1()
@@ -1705,7 +1705,7 @@ void FPU_FYL2XP1()
     FPU_FPOP();
 #endif
 
-    fpu_detail::CheckException();
+    if (fpu_detail::CheckException()) return;
 }
 
 /* MMX instructions set the top of stack to zero---Intel explicitly documents this.

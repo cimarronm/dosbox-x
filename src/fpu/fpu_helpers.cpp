@@ -203,7 +203,7 @@ bool StackValid(int pos)
     fpu.sw.IE = 1;
     fpu.sw.SF = 1;
     fpu.sw.C1 = 0;
-    CheckException();
+    (void)CheckException();
     fpu.regvalid[pos] = true;
     SetQNaN(pos);
     return false;
@@ -316,10 +316,10 @@ void RaiseLoadExceptions(bool denormal, bool signaling_nan)
 {
     if (denormal) {
         fpu.sw.DE = 1;
-        CheckException();
+        (void)CheckException();
     } else if (signaling_nan) {
         fpu.sw.IE = 1;
-        CheckException();
+        (void)CheckException();
     }
 }
 

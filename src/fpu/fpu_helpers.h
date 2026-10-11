@@ -17,7 +17,7 @@ enum class RemainderMode {
     Nearest,
 };
 
-bool CheckException();
+[[nodiscard]] bool CheckException();
 void SetStatusFromHostExceptions();
 uint16_t GetTag();
 InputClass ClassifyInput(int op);

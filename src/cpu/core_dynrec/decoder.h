@@ -405,7 +405,6 @@ restart_prefix:
 
 		case 0x9b:	// wait
 #ifdef CPU_FPU
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_post_instruction();
 #endif
@@ -522,49 +521,49 @@ restart_prefix:
 #ifdef CPU_FPU
 		// floating point instructions
 		case 0xd8:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc0();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xd9:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc1();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xda:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc2();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xdb:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc3();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xdc:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc4();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xdd:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc5();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xde:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc6();
 			dyn_fpu_post_instruction();
 			break;
 		case 0xdf:
-			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			if (!enable_fpu) goto let_normal_core_handle_it;
 			dyn_fpu_pre_instruction();
 			dyn_fpu_esc7();
 			dyn_fpu_post_instruction();

@@ -53,7 +53,7 @@
 #define DYN_LINKS		(16)
 
 extern bool do_lds_wraparound;
-extern bool use_dynamic_core_with_fpu;
+extern bool enable_fpu;
 
 //#define DYN_LOG 1 //Turn logging on
 

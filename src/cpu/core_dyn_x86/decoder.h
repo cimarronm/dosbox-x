@@ -488,6 +488,18 @@ static void dyn_fpu_post_instruction(void) {
 	dyn_check_irqrequest();
 }
 
+static void dyn_fpu_pre_instruction(void) {
+	gen_call_function((void *)&FPU_CoprocessorException, "");
+	dyn_check_bool_exception_al();
+}
+
+#ifdef X86_DYNREC_MMX_ENABLED
+static void dyn_mmx_pre_instruction(void) {
+	gen_call_function((void *)&MMX_CoprocessorException, "");
+	dyn_check_bool_exception_al();
+}
+#endif
+
 static void dyn_check_trapflag(void) {
 	gen_dop_word_imm(DOP_TEST,true,DREG(FLAGS),FLAG_TF);
 	save_info[used_save_info].branch_pos=gen_create_branch_long(BR_NZ);
@@ -2512,7 +2524,11 @@ static void dyn_larlsl(bool islar) {
 
 #ifdef X86_DYNREC_MMX_ENABLED
 #include "dyn_mmx.h"
-#define dyn_mmx_check() if ((dyn_dh_fpu.dh_fpu_enabled) && (!fpu_used)) {dh_fpu_startup();}
+#define dyn_mmx_check()                                                   \
+	do {                                                                   \
+		dyn_mmx_pre_instruction();                                       \
+		if ((dyn_dh_fpu.dh_fpu_enabled) && (!fpu_used)) dh_fpu_startup(); \
+	} while (0)
 #endif
 
 #include "lock.h"
@@ -2867,6 +2883,7 @@ restart_prefix:
 		case 0x9b:	//WAIT/FWAIT
 #ifdef CPU_FPU
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (!dyn_dh_fpu.dh_fpu_enabled)
 #endif
@@ -3016,6 +3033,7 @@ restart_prefix:
 #ifdef CPU_FPU
 		case 0xd8:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc0();
@@ -3032,6 +3050,7 @@ restart_prefix:
 			break;
 		case 0xd9:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc1();
@@ -3048,6 +3067,7 @@ restart_prefix:
 			break;
 		case 0xda:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc2();
@@ -3064,6 +3084,7 @@ restart_prefix:
 			break;
 		case 0xdb:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc3();
@@ -3080,6 +3101,7 @@ restart_prefix:
 			break;
 		case 0xdc:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc4();
@@ -3096,6 +3118,7 @@ restart_prefix:
 			break;
 		case 0xdd:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc5();
@@ -3112,6 +3135,7 @@ restart_prefix:
 			break;
 		case 0xde:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc6();
@@ -3128,6 +3152,7 @@ restart_prefix:
 			break;
 		case 0xdf:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+			dyn_fpu_pre_instruction();
 #ifdef X86_DYNFPU_DH_ENABLED
 			if (dyn_dh_fpu.dh_fpu_enabled) {
 				if (fpu_used) dh_fpu_esc7();

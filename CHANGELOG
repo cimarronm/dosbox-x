@@ -55,6 +55,8 @@ Next version:
     FPU cores deliver them too with the dynamic_x86 core switching between
     its host-FPU fast path and generic handler depending on guest exception
     masks. (cimarronm)
+  - FPU: Dynamic CPU cores now always handle x87 and MMX instructions;
+    removed the "use dynamic core with fpu" configuration setting. (cimarronm)
 
 2026.10.01:
   - Fixed DOS FCB operations trying to read/write from device_CON when performed

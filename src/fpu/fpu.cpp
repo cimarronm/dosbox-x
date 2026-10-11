@@ -763,6 +763,8 @@ void FPU_FPATAN()
 
 void FPU_FPOP()
 {
+	if (FPU_NumericExceptionPending()) return;
+
     fpu_detail::StackValid(TOP);
 	fpu.regvalid[TOP] = false;
 	TOP = (TOP+1) & 7;

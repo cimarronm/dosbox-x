@@ -457,6 +457,12 @@ static void dyn_check_irqrequest(void) {
 	used_save_info++;
 }
 
+static void dyn_fpu_post_instruction(void) {
+	gen_call_function((void *)&FPU_NumericException, "");
+	dyn_check_bool_exception_al();
+	dyn_check_irqrequest();
+}
+
 static void dyn_check_trapflag(void) {
 	gen_dop_word_imm(DOP_TEST,true,DREG(FLAGS),FLAG_TF);
 	save_info[used_save_info].branch_pos=gen_create_branch_long(BR_NZ);
@@ -2832,7 +2838,15 @@ restart_prefix:
 		/* POP Ev */
 		case 0x8f:dyn_pop_ev();break;
 		case 0x90:	//NOP
+			break;
 		case 0x9b:	//WAIT/FWAIT
+#ifdef CPU_FPU
+			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
+#ifdef X86_DYNFPU_DH_ENABLED
+			if (!dyn_dh_fpu.dh_fpu_enabled)
+#endif
+				dyn_fpu_post_instruction();
+#endif
 			break;
 		//XCHG ax,reg
 		case 0x91:case 0x92:case 0x93:case 0x94:case 0x95:case 0x96:case 0x97:	
@@ -2986,7 +3000,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc0();
+			{
+				dyn_fpu_esc0();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xd9:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -2999,7 +3016,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc1();
+			{
+				dyn_fpu_esc1();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xda:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3012,7 +3032,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc2();
+			{
+				dyn_fpu_esc2();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xdb:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3025,7 +3048,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc3();
+			{
+				dyn_fpu_esc3();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xdc:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3038,7 +3064,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc4();
+			{
+				dyn_fpu_esc4();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xdd:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3051,7 +3080,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc5();
+			{
+				dyn_fpu_esc5();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xde:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3064,7 +3096,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc6();
+			{
+				dyn_fpu_esc6();
+				dyn_fpu_post_instruction();
+			}
 			break;
 		case 0xdf:
 			if (!use_dynamic_core_with_fpu) goto let_normal_core_handle_it;
@@ -3077,7 +3112,10 @@ restart_prefix:
 				}
 			} else
 #endif
-			dyn_fpu_esc7();
+			{
+				dyn_fpu_esc7();
+				dyn_fpu_post_instruction();
+			}
 			break;
 #endif
 		//Loops

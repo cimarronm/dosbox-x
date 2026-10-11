@@ -4923,6 +4923,15 @@ bool FPU_CoprocessorException(void) {
 	return false;
 }
 
+bool FPU_NumericException(void)
+{
+	if (!FPU_NumericExceptionPending()) return false;
+
+	cpu.exception.which = EXCEPTION_MF;
+	cpu.exception.error = 0;
+	return true;
+}
+
 bool MMX_CoprocessorException(void) {
 	/* If EM bit set, undefined code.
 	 * Else if TS set, exception 7 */

@@ -92,6 +92,9 @@ Next version:
     backends, fixing programs such as dBase IV that hang when printing to
     LPT1 because they poll input status and read zero bytes forever.
     (cimarronm)
+  - FPU: Save x87 instruction/data pointers and opcode in FSTENV/FSAVE and
+    FXSAVE state after unmasked exceptions, including 8087, 80287, and 80387
+    environment layouts. (cimarronm)
 
 2026.10.01:
   - Fixed DOS FCB operations trying to read/write from device_CON when performed

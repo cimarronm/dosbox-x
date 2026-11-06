@@ -113,6 +113,8 @@ Next version:
   - FPU: Save x87 instruction/data pointers and opcode in FSTENV/FSAVE and
     FXSAVE state after unmasked exceptions, including 8087, 80287, and 80387
     environment layouts. (cimarronm)
+  - FPU: Fixed x87 underflow reporting for inexact tiny results that round to
+    the minimum normal IEEE floating-point value. (cimarronm)
 
 2026.10.01:
   - Fixed DOS FCB operations trying to read/write from device_CON when performed

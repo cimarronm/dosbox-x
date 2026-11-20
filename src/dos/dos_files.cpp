@@ -27,9 +27,11 @@
 
 #include "dosbox.h"
 #include "bios.h"
+#include "callback.h"
 #include "logging.h"
 #include "mem.h"
 #include "regs.h"
+#include "timer.h"
 #include "dos_inc.h"
 #include "drives.h"
 #include "cross.h"
@@ -51,6 +53,7 @@
 #define FCB_ERR_WRITE   1
 
 extern bool log_int21;
+void DOS_AddDays(uint8_t days);
 extern bool log_fileio;
 extern bool enable_share_exe, enable_dbcs_tables;
 extern int dos_clipboard_device_access;
@@ -1992,6 +1995,43 @@ uint8_t DOS_FCBRead(uint16_t seg,uint16_t offset,uint16_t recno) {
 	return FCB_READ_PARTIAL;
 }
 
+static void DOS_FCBUpdateDateTime(uint16_t &date, uint16_t &time) {
+	if (IS_PC98_ARCH) {
+		// Preserve the existing PC-98 behavior. Its INT 21h AH=2Ch implementation
+		// uses the PC-98 clock service rather than the IBM-compatible BIOS timer.
+		date = DOS_PackDate(dos.date.year,dos.date.month,dos.date.day);
+		const auto ticks = mem_readd(BIOS_TIMER);
+		const auto seconds = (ticks*10u)/182u;
+		time = DOS_PackTime((uint16_t)(seconds/3600u),
+		                    (uint16_t)((seconds % 3600u)/60u),
+		                    (uint16_t)(seconds % 60u));
+		return;
+	}
+
+	// Match the conventional-PC INT 21h AH=2Ch path: INT 1Ah clears the
+	// midnight flag, and DOS uses it to advance its cached date.
+	const auto oldax = reg_ax, oldcx = reg_cx, olddx = reg_dx;
+	reg_ax = 0;
+	CALLBACK_RunRealInt(0x1a);
+	const auto days = reg_al;
+	const auto ticks = ((Bitu)reg_cx << 16u) | reg_dx;
+	reg_ax = oldax;
+	reg_cx = oldcx;
+	reg_dx = olddx;
+
+	if (days) DOS_AddDays(days);
+	date = DOS_PackDate(dos.date.year,dos.date.month,dos.date.day);
+
+	auto centiseconds = (Bitu)((100.0/((double)PIT_TICK_RATE/65536.0)) *
+	                           (double)ticks);
+	centiseconds /= 100;
+	const auto seconds = (uint16_t)(centiseconds % 60);
+	centiseconds /= 60;
+	const auto minutes = (uint16_t)(centiseconds % 60);
+	centiseconds /= 60;
+	time = DOS_PackTime((uint16_t)(centiseconds % 24),minutes,seconds);
+}
+
 uint8_t DOS_FCBWrite(uint16_t seg,uint16_t offset,uint16_t recno) {
 	DOS_FCB fcb(seg,offset);
 	uint8_t fhandle,cur_rec;uint16_t cur_block,rec_size;
@@ -2014,14 +2054,7 @@ uint8_t DOS_FCBWrite(uint16_t seg,uint16_t offset,uint16_t recno) {
 	uint32_t size;uint16_t date,time;
 	fcb.GetSizeDateTime(size,date,time);
 	if (pos+towrite>size) size=pos+towrite;
-	//time doesn't keep track of endofday
-	date = DOS_PackDate(dos.date.year,dos.date.month,dos.date.day);
-	uint32_t ticks = mem_readd(BIOS_TIMER);
-	uint32_t seconds = (ticks*10u)/182u;
-	uint16_t hour = (uint16_t)(seconds/3600u);
-	uint16_t min = (uint16_t)((seconds % 3600u)/60u);
-	uint16_t sec = (uint16_t)(seconds % 60u);
-	time = DOS_PackTime(hour,min,sec);
+	DOS_FCBUpdateDateTime(date,time);
 	Files[fhandle]->time = time;
 	Files[fhandle]->date = date;
 	fcb.SetSizeDateTime(size,date,time);
@@ -2046,14 +2079,7 @@ uint8_t DOS_FCBIncreaseSize(uint16_t seg,uint16_t offset) {
 	uint32_t size;uint16_t date,time;
 	fcb.GetSizeDateTime(size,date,time);
 	if (pos+towrite>size) size=pos+towrite;
-	//time doesn't keep track of endofday
-	date = DOS_PackDate(dos.date.year,dos.date.month,dos.date.day);
-	uint32_t ticks = mem_readd(BIOS_TIMER);
-	uint32_t seconds = (ticks*10u)/182u;
-	uint16_t hour = (uint16_t)(seconds/3600u);
-	uint16_t min = (uint16_t)((seconds % 3600u)/60u);
-	uint16_t sec = (uint16_t)(seconds % 60u);
-	time = DOS_PackTime(hour,min,sec);
+	DOS_FCBUpdateDateTime(date,time);
 	Files[fhandle]->time = time;
 	Files[fhandle]->date = date;
 	fcb.SetSizeDateTime(size,date,time);
